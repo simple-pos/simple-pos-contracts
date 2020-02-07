@@ -1,0 +1,30 @@
+{
+  "name": "simple-pos",
+  "version": "1.0.0",
+  "description": "Simple Poin of Sale smart contract",
+  "main": "README.md",
+  "scripts": {
+    "test": "concurrently --kill-others --success first \"npm run ganache > /dev/null\" \"wait-port 8545 && truffle compile && truffle test\"",
+    "ganache": "ganache-cli -e 10000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sche/simple-pos.git"
+  },
+  "keywords": [
+    "smart contract",
+    "point of sale"
+  ],
+  "author": "Andrey Scherbovich",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sche/simple-pos/issues"
+  },
+  "homepage": "https://github.com/sche/simple-pos#readme",
+  "devDependencies": {
+    "concurrently": "^5.1.0",
+    "ganache-cli": "^6.9.0",
+    "truffle": "^5.1.12",
+    "wait-port": "^0.2.7"
+  }
+}
