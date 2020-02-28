@@ -20,6 +20,13 @@ const assertRevert = async (blockOrPromise, reason) => {
 	assert.equal(errorCaught, true, 'Operation did not revert as expected');
 };
 
+/**
+ *  Translates an amount to Eth unit (10^18).
+ *  @param amount The amount you want to re-base to UNIT
+ */
+const toEth = amount => web3.utils.toBN(web3.utils.toWei(amount.toString(), 'ether'));
+
 module.exports = {
 	assertRevert,
+	toEth
 };
