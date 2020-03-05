@@ -2,6 +2,7 @@ pragma solidity >=0.4.21 <0.7.0;
 
 import "./interfaces/IUniswapExchange.sol";
 import "./SimplePOSToken.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract SimplePOS {
     address public owner;
@@ -9,12 +10,14 @@ contract SimplePOS {
     SimplePOSToken public posToken;
     uint public commission;
 
+    using SafeMath for uint;
+
     constructor(
         IUniswapExchange _exchange,
         string memory _posTokenName,
         string memory _posTokenSymbol,
-        uint _initialRatio,
-        uint _commission)
+        uint _initialRatio, // initialMintedPOSTokens = initialExchangeTokenValue * _initialRatio
+        uint _commission) // <= 50%; comission = incommingValue / _comission
         public
         payable
     {
@@ -25,6 +28,9 @@ contract SimplePOS {
         exchange = _exchange;
         posToken = new SimplePOSToken(_posTokenName, _posTokenSymbol);
         commission = _commission;
+        uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(0, now);
+        uint initialMintedPOSTokens = initialExchangeTokenValue.mul(_initialRatio);
+        posToken.mint(msg.sender, initialMintedPOSTokens);
     }
 
     function getExchangeAddress()

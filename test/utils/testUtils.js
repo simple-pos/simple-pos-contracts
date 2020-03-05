@@ -25,8 +25,10 @@ const assertRevert = async (blockOrPromise, reason) => {
  *  @param amount The amount you want to re-base to UNIT
  */
 const toEth = amount => web3.utils.toBN(web3.utils.toWei(amount.toString(), 'ether'));
+const fromEth = amount => web3.utils.fromWei(amount, 'ether');
 
 module.exports = {
 	assertRevert,
-	toEth
+	toEth,
+	fromEth
 };
