@@ -22,10 +22,10 @@
   },
   "homepage": "https://github.com/sche/simple-pos#readme",
   "devDependencies": {
-    "@openzeppelin/contracts": "^2.5.0",
+    "@openzeppelin/contracts": "^3.1.0",
     "concurrently": "^5.1.0",
     "ganache-cli": "^6.9.0",
-    "truffle": "^5.1.12",
     "wait-port": "^0.2.7"
-  }
+  },
+  "dependencies": {}
 }
