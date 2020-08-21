@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SimplePOS {
-    address public owner;
+    address payable public owner;
     IUniswapExchange public exchange;
     SimplePOSToken public sposToken;
     uint public commission;
@@ -20,8 +20,8 @@ contract SimplePOS {
      * @param _sposTokenName SimplePOSToken name; SimplePOSToken controls bonus tokens pool
      * @param _sposTokenSymbol SimplePOSToken symbol; SimplePOSToken controls bonus tokens pool
      * @param _initialRatio SimplePOS creator sets up the initial ratio of bonus tokens pool to the SimplePOSToken supply
-     * @param _commission Commission on incoming payments that should form bonus tokens pool; [0..10000); 1 unit == 0.001
-     * @param _curveCoefficient The bonding curve coefficient; [0..10000); 1 unit == 0.001
+     * @param _commission Commission on incoming payments that should form bonus tokens pool; [0..10000); 1 unit == 0.01%
+     * @param _curveCoefficient The bonding curve coefficient; [0..10000); 1 unit == 0.01%
      */
     constructor(
         IUniswapExchange _exchange,
@@ -45,6 +45,30 @@ contract SimplePOS {
         uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(0, now);
         uint initialMintedPOSTokens = initialExchangeTokenValue.mul(_initialRatio);
         sposToken.mint(msg.sender, initialMintedPOSTokens);
+    }
+
+    receive() 
+        external 
+        payable
+    {                
+        uint bonusPart = msg.value.mul(commission).div(10000);        
+        owner.transfer(msg.value.sub(bonusPart));
+        // exchange commision in eth on bonus part tokens
+        uint incomingBonusTokens = exchange.ethToTokenSwapInput.value(bonusPart)(0, now);        
+        processIncomingBonusTokens(incomingBonusTokens);
+    }
+
+    function processIncomingBonusTokens(
+        uint incomingBonusTokens)
+        internal
+    {
+        uint bonusTokenBalance = IERC20(exchange.tokenAddress()).balanceOf(address(this));
+        // sposToken.mint(address(0x88eb62650112e163d72b43C328d7A878e6951818), 1000000000000000000); - it cases revert here with standalone ganache
+        uint sposTokenSupply = sposToken.totalSupply();
+        uint invariant = bonusTokenBalance.div(sposTokenSupply);
+        uint newBonusTokenBalanceForInvariant = bonusTokenBalance + incomingBonusTokens - incomingBonusTokens.mul(curveCoefficient).div(10000);
+        uint toMintSPOSTokens = newBonusTokenBalanceForInvariant.div(invariant) - sposTokenSupply;
+        sposToken.mint(msg.sender, toMintSPOSTokens);
     }
 
     function getExchangeAddress()
