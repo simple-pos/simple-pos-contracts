@@ -53,21 +53,15 @@ contract SimplePOS {
     {                
         uint bonusPart = msg.value.mul(commission).div(10000);        
         owner.transfer(msg.value.sub(bonusPart));
-        // exchange commision in eth on bonus part tokens
-        uint incomingBonusTokens = exchange.ethToTokenSwapInput.value(bonusPart)(0, now);        
-        processIncomingBonusTokens(incomingBonusTokens);
-    }
 
-    function processIncomingBonusTokens(
-        uint incomingBonusTokens)
-        internal
-    {
+        // Process incoming bonus tokens
         uint bonusTokenBalance = IERC20(exchange.tokenAddress()).balanceOf(address(this));
-        // sposToken.mint(address(0x88eb62650112e163d72b43C328d7A878e6951818), 1000000000000000000); - it cases revert here with standalone ganache
         uint sposTokenSupply = sposToken.totalSupply();
-        uint invariant = bonusTokenBalance.div(sposTokenSupply);
+        // we calculate with a precesion of 4 numbers
+        uint invariant = bonusTokenBalance.mul(10000).div(sposTokenSupply);
+        uint incomingBonusTokens = exchange.ethToTokenSwapInput.value(bonusPart)(0, now);
         uint newBonusTokenBalanceForInvariant = bonusTokenBalance + incomingBonusTokens - incomingBonusTokens.mul(curveCoefficient).div(10000);
-        uint toMintSPOSTokens = newBonusTokenBalanceForInvariant.div(invariant) - sposTokenSupply;
+        uint toMintSPOSTokens = newBonusTokenBalanceForInvariant.mul(10000).div(invariant) - sposTokenSupply;
         sposToken.mint(msg.sender, toMintSPOSTokens);
     }
 

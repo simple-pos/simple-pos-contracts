@@ -87,29 +87,33 @@ contract("SimplePOS", accounts => {
 
     it("should receive payements and mint bonus tokens accordingly", async () => {
         let exchange = await MockUniswapExchange.new() // why at this step in ganash there is a contract call?
-        let initialEthValue = toEth(0.1)
+        let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
         let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue }) // why at this step only one additional contract is created in the Ganache?
 
         // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
         // and transfered to the creator
         let sposToken = await SimplePOSToken.at(await contract.sposToken())
-        let totalSupply = await sposToken.totalSupply() // why this call does not add any tx to ganache? (still 4 txs)? probably because this is a view function
-        assert.equal(fromEth(totalSupply), fromEth(initialEthValue))
+        let totalSupply = await sposToken.totalSupply()
+        assert.equal(fromEth(totalSupply), fromEth(initialEthValue)) // 1
         let creatorBalance = await sposToken.balanceOf(accounts[0])
-        assert.equal(fromEth(creatorBalance), fromEth(initialEthValue)) // same here, no new transaction are added (still 4 txs)
+        assert.equal(fromEth(creatorBalance), fromEth(initialEthValue))
 
-        // await truffleAssert.reverts(
-        //     web3.eth.sendTransaction({from: accounts[1], to: contract.address, value: toEth(1)}),
-        //     "only owner"
-        // );
+        // Check values against test vectors. TODO: use loop
 
-        await web3.eth.sendTransaction({from: accounts[1], to: contract.address, value: toEth(1)}) // WHY "from: accounts[1]" fails??? // adds one transaction
-        // // contract.send({from: accounts[1], value: toEth(1)}) // need to check if it works // does not add new transactions. Whyyy?
-
-        // console.log("sposToken: ", sposToken.address)
-        // let totalSupply1 = await sposToken.totalSupply() // this one fails in combination with 'contract.send'. Whyyy?
-        // console.log("Total supply: ", fromEth(totalSupply1)) // 0.175
-
-        // assert.equal(fromEth(totalSupply1), fromEth(initialEthValue))
+        let testVector = [
+            { 'eth': 1, 'idp': 1.05, 'spos': 1.025 },
+            { 'eth': 5, 'idp': 1.3, 'spos': 1.147124865761983793 },
+            { 'eth': 10, 'idp': 1.8, 'spos': 1.367807977409106953 },
+            { 'eth': 50, 'idp': 4.3, 'spos': 2.317805304354434227 }
+        ]
+        for (var i in testVector) {
+            let v = testVector[i]
+            await web3.eth.sendTransaction({from: accounts[0], to: contract.address, value: toEth(v.eth)}) // still fails for account[1] - don't know why
+            assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), v.idp)
+            assert.equal(fromEth(await sposToken.totalSupply()), v.spos)    
+        }
     })
 })
