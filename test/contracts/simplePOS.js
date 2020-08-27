@@ -86,7 +86,7 @@ contract("SimplePOS", accounts => {
      ***************************************/
 
     it("should receive payements and mint bonus tokens accordingly", async () => {
-        let exchange = await MockUniswapExchange.new() // why at this step in ganash there is a contract call?
+        let exchange = await MockUniswapExchange.new()
         let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
 
         let initialEthValue = toEth(1)
@@ -101,19 +101,19 @@ contract("SimplePOS", accounts => {
         let creatorBalance = await sposToken.balanceOf(accounts[0])
         assert.equal(fromEth(creatorBalance), fromEth(initialEthValue))
 
-        // Check values against test vectors. TODO: use loop
-
+        // Check values against test vectors
         let testVector = [
-            { 'eth': 1, 'idp': 1.05, 'spos': 1.025 },
-            { 'eth': 5, 'idp': 1.3, 'spos': 1.147124865761983793 },
-            { 'eth': 10, 'idp': 1.8, 'spos': 1.367807977409106953 },
-            { 'eth': 50, 'idp': 4.3, 'spos': 2.317805304354434227 }
+            { 'account': accounts[1], 'eth': 1, 'idp': 1.05, 'spos': 1.025 },
+            { 'account': accounts[2], 'eth': 5, 'idp': 1.3, 'spos': 1.147124865761983793 },
+            { 'account': accounts[3], 'eth': 10, 'idp': 1.8, 'spos': 1.367807977409106953 },
+            { 'account': accounts[4], 'eth': 50, 'idp': 4.3, 'spos': 2.317805304354434227 }
         ]
         for (var i in testVector) {
             let v = testVector[i]
-            await web3.eth.sendTransaction({from: accounts[0], to: contract.address, value: toEth(v.eth)}) // still fails for account[1] - don't know why
+            await contract.sendTransaction({from: v.account, value: toEth(v.eth)})
             assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), v.idp)
             assert.equal(fromEth(await sposToken.totalSupply()), v.spos)    
         }
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[4])), 0.949997326945327274)
     })
 })
