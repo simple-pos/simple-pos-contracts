@@ -57,12 +57,30 @@ contract SimplePOS {
         // Process incoming bonus tokens
         uint bonusTokenBalance = IERC20(exchange.tokenAddress()).balanceOf(address(this));
         uint sposTokenSupply = sposToken.totalSupply();
-        // we calculate with a precesion of 4 numbers
+        // We calculate with a precesion of 4 numbers
         uint invariant = bonusTokenBalance.mul(10000).div(sposTokenSupply);
         uint incomingBonusTokens = exchange.ethToTokenSwapInput.value(bonusPart)(0, now);
         uint newBonusTokenBalanceForInvariant = bonusTokenBalance + incomingBonusTokens - incomingBonusTokens.mul(curveCoefficient).div(10000);
         uint toMintSPOSTokens = newBonusTokenBalanceForInvariant.mul(10000).div(invariant) - sposTokenSupply;
         sposToken.mint(msg.sender, toMintSPOSTokens);
+    }
+
+    /**
+     * @dev Exchange SPOS tokens on bonus tokens. This action burns 'amount' of SPOS and transfers bonus tokens to a caller.
+     * @param _amount Amount of SPOS tokens to exchange     
+     */
+    function exchangeSposTokensOnBonusTokens(
+        uint _amount)
+        public
+    {
+        // There should be always spos tokens minted to properly calculate invariant
+        require(_amount < sposToken.totalSupply(), "SPOS token amount should be less than total supply.");
+        // We do not check tokens availability here as 'burn' will check it
+        IERC20 bonusToken = IERC20(exchange.tokenAddress());
+        // toTransferBonusTokens < bonusToken.balanceOf(address(this) will always be true
+        uint toTransferBonusTokens = _amount.mul(bonusToken.balanceOf(address(this))).div(sposToken.totalSupply());
+        sposToken.burn(msg.sender, _amount);
+        bonusToken.transfer(msg.sender, toTransferBonusTokens);        
     }
 
     function getExchangeAddress()

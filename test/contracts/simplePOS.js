@@ -91,7 +91,7 @@ contract("SimplePOS", accounts => {
 
         let initialEthValue = toEth(1)
         // fee: 5%; curve_coefficient: 50%
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue }) // why at this step only one additional contract is created in the Ganache?
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
 
         // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
         // and transfered to the creator
@@ -116,4 +116,66 @@ contract("SimplePOS", accounts => {
         }
         assert.equal(fromEth(await sposToken.balanceOf(accounts[4])), 0.949997326945327274)
     })
+
+    /***************************************
+     ********** EXCHANGE TOKENS ************
+     ***************************************/
+
+    it("allows exchanging SPOS tokens", async () => {
+        let exchange = await MockUniswapExchange.new()
+        let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+
+        await contract.sendTransaction({ from: accounts[1], value: toEth(1) })
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[1])), 0.025) // accounts[1] SPOS token balance is '0.025' after this step
+
+        // exchange the rest 0.015 out of 0.025 spos tokens from account1
+        await contract.exchangeSposTokensOnBonusTokens(toEth(0.015), { from: accounts[1] })
+        assert.equal(fromEth(await mockBonusToken.balanceOf(accounts[1])), 0.015365853658536585) // 0.015 / 1.025 (spos tokens total) * 1.05 (bonus tokens total) = 0.0126
+
+        assert.equal(fromEth(await sposToken.totalSupply()), 1.01)
+        assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), 1.034634146341463415)
+
+        // exchange the rest 0.01 spos tokens from account1
+        await contract.exchangeSposTokensOnBonusTokens(toEth(0.01), { from: accounts[1] })
+        assert.equal(fromEth(await mockBonusToken.balanceOf(accounts[1])), 0.025609756097560975)
+    })
+
+    it("should revert exchange SPOS tokens if it equal to the total supply", async () => {
+        let exchange = await MockUniswapExchange.new()
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+
+        await contract.sendTransaction({from: accounts[1], value: toEth(1)})
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[0])), 1)
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[1])), 0.025)
+
+        contract.exchangeSposTokensOnBonusTokens(toEth(1), { from: accounts[0] })
+
+        await assert.revert(contract.exchangeSposTokensOnBonusTokens(toEth(0.025), {from: accounts[1]}), 
+                            "SPOS token amount should be less than total supply.")
+    })
+    
+     it("should revert exchange SPOS tokens if it exceeding the sender balance", async () => {
+        let exchange = await MockUniswapExchange.new()
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+
+        await contract.sendTransaction({from: accounts[1], value: toEth(1)})
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[1])), 0.025) // accounts[1] SPOS token balance is '0.025' after this step
+
+        await assert.revert(contract.exchangeSposTokensOnBonusTokens(toEth(0.026), {from: accounts[1]}), 
+                            "ERC20: burn amount exceeds balance.")
+    })
+
 })
