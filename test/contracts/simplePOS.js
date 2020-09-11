@@ -1,11 +1,16 @@
 const SimplePOS = artifacts.require("SimplePOS")
 const SimplePOSToken = artifacts.require("SimplePOSToken")
 const MockUniswapExchange = artifacts.require("MockUniswapExchange")
+const MockStableCoin = artifacts.require("MockStableCoin")
 
 const { toEth, fromEth } = require('../utils/testUtils')
 const maxUint = "115792089237316195423570985008687907853269984665640564039457584007913129639935" // 2^256 - 1
 
 contract("SimplePOS", accounts => {
+    /***************************************
+     ************* CONSTRUCTUR *************
+     ***************************************/
+
     it("should create a contract", async () => {
         let exchange = await MockUniswapExchange.new()
         let initialEthValue = toEth(0.1)
@@ -28,8 +33,13 @@ contract("SimplePOS", accounts => {
         // and transfered to the creator
         let totalSupply = await sposToken.totalSupply()
         assert.equal(fromEth(totalSupply), fromEth(initialEthValue))
+        // check that the contract creator gets minted SPOS tokens
         let creatorBalance = await sposToken.balanceOf(accounts[0])
         assert.equal(fromEth(creatorBalance), fromEth(initialEthValue))
+        // check that SimplePOS contract controls bonus pool 
+        // (1 to 1 with sposToken.totalSupply as contract.initialRation == 1)      
+        let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
+        assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), fromEth(totalSupply))
         // check that contract Eth balance is zero
         assert.equal(await web3.eth.getBalance(contract.address), 0)
     })
@@ -70,4 +80,102 @@ contract("SimplePOS", accounts => {
         await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", maxUint, 100, 5000, { value: oneWei }),
                             "SafeMath: multiplication overflow.")
     })
+
+    /***************************************
+     ************ RECEIVE ETHER ************
+     ***************************************/
+
+    it("should receive payements and mint bonus tokens accordingly", async () => {
+        let exchange = await MockUniswapExchange.new()
+        let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+
+        // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
+        // and transfered to the creator
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+        let totalSupply = await sposToken.totalSupply()
+        assert.equal(fromEth(totalSupply), fromEth(initialEthValue)) // 1
+        let creatorBalance = await sposToken.balanceOf(accounts[0])
+        assert.equal(fromEth(creatorBalance), fromEth(initialEthValue))
+
+        // Check values against test vectors
+        let testVector = [
+            { 'account': accounts[1], 'eth': 1, 'idp': 1.05, 'spos': 1.025 },
+            { 'account': accounts[2], 'eth': 5, 'idp': 1.3, 'spos': 1.147124865761983793 },
+            { 'account': accounts[3], 'eth': 10, 'idp': 1.8, 'spos': 1.367807977409106953 },
+            { 'account': accounts[4], 'eth': 50, 'idp': 4.3, 'spos': 2.317805304354434227 }
+        ]
+        for (var i in testVector) {
+            let v = testVector[i]
+            await contract.sendTransaction({from: v.account, value: toEth(v.eth)})
+            assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), v.idp)
+            assert.equal(fromEth(await sposToken.totalSupply()), v.spos)    
+        }
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[4])), 0.949997326945327274)
+    })
+
+    /***************************************
+     ********** EXCHANGE TOKENS ************
+     ***************************************/
+
+    it("allows exchanging SPOS tokens", async () => {
+        let exchange = await MockUniswapExchange.new()
+        let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+
+        await contract.sendTransaction({ from: accounts[1], value: toEth(1) })
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[1])), 0.025) // accounts[1] SPOS token balance is '0.025' after this step
+
+        // exchange the rest 0.015 out of 0.025 spos tokens from account1
+        await contract.exchangeSposTokensOnBonusTokens(toEth(0.015), { from: accounts[1] })
+        assert.equal(fromEth(await mockBonusToken.balanceOf(accounts[1])), 0.015365853658536585) // 0.015 / 1.025 (spos tokens total) * 1.05 (bonus tokens total) = 0.0126
+
+        assert.equal(fromEth(await sposToken.totalSupply()), 1.01)
+        assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), 1.034634146341463415)
+
+        // exchange the rest 0.01 spos tokens from account1
+        await contract.exchangeSposTokensOnBonusTokens(toEth(0.01), { from: accounts[1] })
+        assert.equal(fromEth(await mockBonusToken.balanceOf(accounts[1])), 0.025609756097560975)
+    })
+
+    it("should revert exchange SPOS tokens if it equal to the total supply", async () => {
+        let exchange = await MockUniswapExchange.new()
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+
+        await contract.sendTransaction({from: accounts[1], value: toEth(1)})
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[0])), 1)
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[1])), 0.025)
+
+        contract.exchangeSposTokensOnBonusTokens(toEth(1), { from: accounts[0] })
+
+        await assert.revert(contract.exchangeSposTokensOnBonusTokens(toEth(0.025), {from: accounts[1]}), 
+                            "SPOS token amount should be less than total supply.")
+    })
+    
+     it("should revert exchange SPOS tokens if it exceeding the sender balance", async () => {
+        let exchange = await MockUniswapExchange.new()
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+
+        await contract.sendTransaction({from: accounts[1], value: toEth(1)})
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[1])), 0.025) // accounts[1] SPOS token balance is '0.025' after this step
+
+        await assert.revert(contract.exchangeSposTokensOnBonusTokens(toEth(0.026), {from: accounts[1]}), 
+                            "ERC20: burn amount exceeds balance.")
+    })
+
 })
