@@ -2,6 +2,7 @@ const SimplePOS = artifacts.require("SimplePOS")
 const SimplePOSToken = artifacts.require("SimplePOSToken")
 const MockUniswapExchange = artifacts.require("MockUniswapExchange")
 const MockStableCoin = artifacts.require("MockStableCoin")
+const Subscription = artifacts.require("Subscription")
 
 const { toEth, fromEth } = require('../utils/testUtils')
 const maxUint = "115792089237316195423570985008687907853269984665640564039457584007913129639935" // 2^256 - 1
@@ -26,7 +27,7 @@ contract("SimplePOS", accounts => {
         // check curve coefficient
         assert.equal(await contract.curveCoefficient(), 5000)
         // check exchange        
-        assert.equal(await contract.getExchangeAddress(), exchange.address)
+        assert.equal(await contract.exchange(), exchange.address)
         // check that bonus token is the same as exchange token
         assert.equal(await contract.getBonusTokenAddress(), await exchange.tokenAddress())
         // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
@@ -42,6 +43,9 @@ contract("SimplePOS", accounts => {
         assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), fromEth(totalSupply))
         // check that contract Eth balance is zero
         assert.equal(await web3.eth.getBalance(contract.address), 0)
+        // check that the proper subscription is created
+        let subscription = await Subscription.at(await contract.subscription())
+        assert.equal(await subscription.author(), contract.address)
     })
 
     it("should revert constructor if commission is 100%", async () => {

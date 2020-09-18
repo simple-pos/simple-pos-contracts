@@ -2,6 +2,7 @@ pragma solidity >=0.6.0 <0.7.0;
 
 import "./interfaces/IUniswapExchange.sol";
 import "./SimplePOSToken.sol";
+import "./subscription/Subscription.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -9,6 +10,7 @@ contract SimplePOS {
     address payable public owner;
     IUniswapExchange public exchange;
     SimplePOSToken public sposToken;
+    Subscription public subscription;
     uint public commission;
     uint public curveCoefficient;
 
@@ -45,6 +47,10 @@ contract SimplePOS {
         uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(0, now);
         uint initialMintedPOSTokens = initialExchangeTokenValue.mul(_initialRatio);
         sposToken.mint(msg.sender, initialMintedPOSTokens);
+        // Deploy subscription contract (_toAddress, _tokenAddress, _tokenAmount, _periodSeconds, _gasPrice).
+        // No limitation on required subscription fee and period. 
+        // _gasPrice = 0 meaning we do not expect transactions relaying
+        subscription = new Subscription(address(this), exchange.tokenAddress(), 0, 0, 0);
     }
 
     receive() 
@@ -81,14 +87,6 @@ contract SimplePOS {
         uint toTransferBonusTokens = _amount.mul(bonusToken.balanceOf(address(this))).div(sposToken.totalSupply());
         sposToken.burn(msg.sender, _amount);
         bonusToken.transfer(msg.sender, toTransferBonusTokens);        
-    }
-
-    function getExchangeAddress()
-        public
-        view
-        returns (address)
-    {
-        return address(exchange);
     }
 
     function getBonusTokenAddress()
