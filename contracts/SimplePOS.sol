@@ -31,7 +31,8 @@ contract SimplePOS {
         string memory _sposTokenSymbol,
         uint _initialRatio,
         uint _commission,
-        uint _curveCoefficient)
+        uint _curveCoefficient
+    )
         public
         payable
     {
@@ -57,18 +58,35 @@ contract SimplePOS {
         external 
         payable
     {                
-        uint bonusPart = msg.value.mul(commission).div(10000);        
+        uint bonusPart = msg.value.mul(commission).div(10000);
         owner.transfer(msg.value.sub(bonusPart));
-
-        // Process incoming bonus tokens
-        uint bonusTokenBalance = IERC20(exchange.tokenAddress()).balanceOf(address(this));
-        uint sposTokenSupply = sposToken.totalSupply();
-        // We calculate with a precesion of 4 numbers
-        uint invariant = bonusTokenBalance.mul(10000).div(sposTokenSupply);
+        (uint bonusTokenBalance, uint sposTokenSupply, uint invariant) = getBalanceSupplyInvariant();
         uint incomingBonusTokens = exchange.ethToTokenSwapInput.value(bonusPart)(0, now);
+        mintSPOSTokens(incomingBonusTokens, bonusTokenBalance, sposTokenSupply, invariant, msg.sender);
+    }
+
+    function getBalanceSupplyInvariant()
+        internal
+        returns (uint bonusTokenBalance, uint sposTokenSupply, uint invariant)
+    {
+        bonusTokenBalance = IERC20(exchange.tokenAddress()).balanceOf(address(this));
+        sposTokenSupply = sposToken.totalSupply();
+        // We calculate with a precesion of 4 numbers
+        invariant = bonusTokenBalance.mul(10000).div(sposTokenSupply);
+    }
+
+    function mintSPOSTokens(
+        uint incomingBonusTokens,
+        uint bonusTokenBalance,
+        uint sposTokenSupply,
+        uint invariant,
+        address receiver
+    )
+        internal
+    {
         uint newBonusTokenBalanceForInvariant = bonusTokenBalance + incomingBonusTokens - incomingBonusTokens.mul(curveCoefficient).div(10000);
         uint toMintSPOSTokens = newBonusTokenBalanceForInvariant.mul(10000).div(invariant) - sposTokenSupply;
-        sposToken.mint(msg.sender, toMintSPOSTokens);
+        sposToken.mint(receiver, toMintSPOSTokens);
     }
 
     /**
@@ -76,8 +94,9 @@ contract SimplePOS {
      * @param _amount Amount of SPOS tokens to exchange     
      */
     function exchangeSposTokensOnBonusTokens(
-        uint _amount)
-        public
+        uint _amount
+    )
+        external        
     {
         // There should be always spos tokens minted to properly calculate invariant
         require(_amount < sposToken.totalSupply(), "SPOS token amount should be less than total supply.");
@@ -87,6 +106,35 @@ contract SimplePOS {
         uint toTransferBonusTokens = _amount.mul(bonusToken.balanceOf(address(this))).div(sposToken.totalSupply());
         sposToken.burn(msg.sender, _amount);
         bonusToken.transfer(msg.sender, toTransferBonusTokens);        
+    }
+
+    /**
+     * @dev Execute subscription for a user. This will accepting payment in bonus tokens (signed by a user). SPOS tokens will be minted accordingly.
+     * @param _from the SimplePOS subscriber
+     * @param _tokenAmount amount of SimplePOS exchange tokens payed for the subscription
+     * @param _periodSeconds the period in seconds between payments
+     */
+    function executeSubscription(
+        address _from,
+        uint256 _tokenAmount,
+        uint256 _periodSeconds,
+        bytes calldata _signature
+    ) 
+        external
+        returns (bool success)
+    {
+        // calculate current parameters necessary for proper SPOS token minting
+        (uint bonusTokenBalance, uint sposTokenSupply, uint invariant) = getBalanceSupplyInvariant();
+        // execute subscription -- it will transfer bonus tokens to this contract
+        // (from, to, tokenAddress, tokenAmount, periodSeconds, gasPrice, nonce, signature)
+        require(subscription.executeSubscription(_from, address(this), exchange.tokenAddress(), _tokenAmount, _periodSeconds, 0, 0, _signature),
+                "Could not execute subscription.");
+        // transfer the owner part
+        uint ownerPart = _tokenAmount.mul(10000 - commission).div(10000);
+        IERC20 bonusToken = IERC20(exchange.tokenAddress());
+        bonusToken.transfer(owner, ownerPart);
+        // mint SPOS tokens to the subscriber
+        mintSPOSTokens(_tokenAmount - ownerPart, bonusTokenBalance, sposTokenSupply, invariant, _from);
     }
 
     function getBonusTokenAddress()
