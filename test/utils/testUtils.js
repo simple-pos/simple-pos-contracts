@@ -27,8 +27,15 @@ const assertRevert = async (blockOrPromise, reason) => {
 const toEth = amount => web3.utils.toBN(web3.utils.toWei(amount.toString(), 'ether'));
 const fromEth = amount => web3.utils.fromWei(amount, 'ether');
 
+const sign = async (message, account) => {
+	let sig = await web3.eth.sign(message, account)
+	let v = parseInt(sig.substr(sig.length - 2), 16) + 27
+	return sig.substr(0, sig.length - 2) + v.toString(16)
+}
+
 module.exports = {
 	assertRevert,
 	toEth,
-	fromEth
+	fromEth,
+	sign
 };

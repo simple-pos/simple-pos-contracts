@@ -4,7 +4,7 @@ const MockUniswapExchange = artifacts.require("MockUniswapExchange")
 const MockStableCoin = artifacts.require("MockStableCoin")
 const Subscription = artifacts.require("Subscription")
 
-const { toEth, fromEth } = require('../utils/testUtils')
+const { toEth, fromEth, sign } = require('../utils/testUtils')
 const maxUint = "115792089237316195423570985008687907853269984665640564039457584007913129639935" // 2^256 - 1
 
 contract("SimplePOS", accounts => {
@@ -167,7 +167,7 @@ contract("SimplePOS", accounts => {
                             "SPOS token amount should be less than total supply.")
     })
     
-     it("should revert exchange SPOS tokens if it exceeding the sender balance", async () => {
+    it("should revert exchange SPOS tokens if it exceeding the sender balance", async () => {
         let exchange = await MockUniswapExchange.new()
 
         let initialEthValue = toEth(1)
@@ -180,6 +180,40 @@ contract("SimplePOS", accounts => {
 
         await assert.revert(contract.exchangeSposTokensOnBonusTokens(toEth(0.026), {from: accounts[1]}), 
                             "ERC20: burn amount exceeds balance.")
+    })
+
+    /***************************************
+     ******** EXECUTE SUBSCRIPTION *********
+     ***************************************/
+
+    it("should execute subscription with proper tokens allocations", async () => {
+        let exchange = await MockUniswapExchange.new()
+        await exchange.setEthToTokenSwapRate(500)
+        let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
+        await exchange.ethToTokenSwapInput(0, Date.now(), {from: accounts[1], value: toEth(1)})
+        assert.equal(fromEth(await mockBonusToken.balanceOf(accounts[1])), 500)
+
+        let initialEthValue = toEth(1)
+        // fee: 5%; curve_coefficient: 50%
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let sposToken = await SimplePOSToken.at(await contract.sposToken())
+        let subscription = await Subscription.at(await contract.subscription())
+
+        // approve subscription contract to spend bonus tokens from account[1]
+        await mockBonusToken.approve(subscription.address, toEth(100), {from: accounts[1]})
+        assert.equal(fromEth(await mockBonusToken.allowance(accounts[1], subscription.address)), 100)
+
+        // prepare a subsciption hash
+        let hash = await subscription.getSubscriptionHash(accounts[1], contract.address, mockBonusToken.address, toEth(1), 60*60*24, 0, 1)
+        let sig = await sign(hash, accounts[1])
+        let isReady = await subscription.isSubscriptionReady(
+            accounts[1], contract.address, mockBonusToken.address, toEth(1), 60*60*24, 0, 1, sig)
+        assert.equal(isReady, true)
+
+        await contract.executeSubscription(accounts[1], toEth(1), 60*60*24, sig)
+        // TODO: check the balance of contract owner
+        // TODO: check bonus pool
+        // TODO: check subscriber simple pos tokens balance
     })
 
 })

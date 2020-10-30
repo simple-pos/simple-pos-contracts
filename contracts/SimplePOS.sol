@@ -109,7 +109,7 @@ contract SimplePOS {
     }
 
     /**
-     * @dev Execute subscription for a user. This will accepting payment in bonus tokens (signed by a user). SPOS tokens will be minted accordingly.
+     * @dev Execute subscription for a user. This will accept payment in bonus tokens (signed by a user). SPOS tokens will be minted accordingly.
      * @param _from the SimplePOS subscriber
      * @param _tokenAmount amount of SimplePOS exchange tokens payed for the subscription
      * @param _periodSeconds the period in seconds between payments
@@ -127,7 +127,7 @@ contract SimplePOS {
         (uint bonusTokenBalance, uint sposTokenSupply, uint invariant) = getBalanceSupplyInvariant();
         // execute subscription -- it will transfer bonus tokens to this contract
         // (from, to, tokenAddress, tokenAmount, periodSeconds, gasPrice, nonce, signature)
-        require(subscription.executeSubscription(_from, address(this), exchange.tokenAddress(), _tokenAmount, _periodSeconds, 0, 0, _signature),
+        require(subscription.executeSubscription(_from, address(this), exchange.tokenAddress(), _tokenAmount, _periodSeconds, 0, 1, _signature),
                 "Could not execute subscription.");
         // transfer the owner part
         uint ownerPart = _tokenAmount.mul(10000 - commission).div(10000);
