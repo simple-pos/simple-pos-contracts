@@ -116,7 +116,7 @@ contract("SimplePOS", accounts => {
             let v = testVector[i]
             await contract.sendTransaction({from: v.account, value: toEth(v.eth)})
             assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), v.idp)
-            assert.equal(fromEth(await sposToken.totalSupply()), v.spos)    
+            assert.equal(fromEth(await sposToken.totalSupply()), v.spos)
         }
         assert.equal(fromEth(await sposToken.balanceOf(accounts[4])), 0.949997326945327274)
     })
@@ -210,10 +210,15 @@ contract("SimplePOS", accounts => {
             accounts[1], contract.address, mockBonusToken.address, toEth(1), 60*60*24, 0, 1, sig)
         assert.equal(isReady, true)
 
-        await contract.executeSubscription(accounts[1], toEth(1), 60*60*24, sig)
-        // TODO: check the balance of contract owner
-        // TODO: check bonus pool
-        // TODO: check subscriber simple pos tokens balance
+        await contract.executeSubscription(accounts[1], toEth(1), 60*60*24, sig)        
+        assert.equal(fromEth(await mockBonusToken.balanceOf(accounts[0])), 0.95)
+        assert.equal(fromEth(await mockBonusToken.balanceOf(contract.address)), 500.05)
+        assert.equal(fromEth(await sposToken.totalSupply()), 500.025)
+        assert.equal(fromEth(await sposToken.balanceOf(accounts[1])), 0.025)
+
+        let isReady2 = await subscription.isSubscriptionReady(
+            accounts[1], contract.address, mockBonusToken.address, toEth(1), 60*60*24, 0, 1, sig)
+        assert.equal(isReady2, false)
     })
 
 })
