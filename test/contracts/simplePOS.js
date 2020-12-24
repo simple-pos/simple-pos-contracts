@@ -9,7 +9,7 @@ const maxUint = "115792089237316195423570985008687907853269984665640564039457584
 
 contract("SimplePOS", accounts => {
     /***************************************
-     ************* CONSTRUCTUR *************
+     ************* CONSTRUCTOR *************
      ***************************************/
 
     it("should create a contract", async () => {
@@ -31,7 +31,7 @@ contract("SimplePOS", accounts => {
         // check that bonus token is the same as exchange token
         assert.equal(await contract.getBonusTokenAddress(), await exchange.tokenAddress())
         // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
-        // and transfered to the creator
+        // and transferred to the creator
         let totalSupply = await sposToken.totalSupply()
         assert.equal(fromEth(totalSupply), fromEth(initialEthValue))
         // check that the contract creator gets minted SPOS tokens
@@ -54,7 +54,7 @@ contract("SimplePOS", accounts => {
                             "Commission should be less than 100%")
     })
 
-    it("should revert constructor if value is not transfered", async () => {
+    it("should revert constructor if value is not transferred", async () => {
         let exchange = await MockUniswapExchange.new()
         await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 100, 5000),
                             "ETH is required to form bonus tokens pool")
@@ -98,7 +98,7 @@ contract("SimplePOS", accounts => {
         let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
 
         // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
-        // and transfered to the creator
+        // and transferred to the creator
         let sposToken = await SimplePOSToken.at(await contract.sposToken())
         let totalSupply = await sposToken.totalSupply()
         assert.equal(fromEth(totalSupply), fromEth(initialEthValue)) // 1
@@ -203,7 +203,7 @@ contract("SimplePOS", accounts => {
         await mockBonusToken.approve(subscription.address, toEth(100), {from: accounts[1]})
         assert.equal(fromEth(await mockBonusToken.allowance(accounts[1], subscription.address)), 100)
 
-        // prepare a subsciption hash
+        // prepare a subscription hash
         let hash = await subscription.getSubscriptionHash(accounts[1], contract.address, mockBonusToken.address, toEth(1), 60*60*24, 0, 1)
         let sig = await sign(hash, accounts[1])
         let isReady = await subscription.isSubscriptionReady(
