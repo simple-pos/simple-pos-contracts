@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.7.4;
+pragma solidity >=0.6.0 <0.7.5;
 
 import "./SimplePOS.sol";
 import "./interfaces/IUniswapExchange.sol";
@@ -25,7 +25,7 @@ contract SimplePOSFactory {
         uint256 _curveCoefficient
     ) external payable {
         SimplePOS spos =
-            new SimplePOS(
+            (new SimplePOS).value(msg.value)(
                 _exchange,
                 _sposTokenName,
                 _sposTokenSymbol,

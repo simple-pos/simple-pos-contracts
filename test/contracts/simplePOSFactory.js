@@ -17,6 +17,18 @@ contract("SimplePOSFactory", (accounts) => {
     let exchange = await MockUniswapExchange.new()
     let initialEthValue = toEth(0.1)
     let factory = await SimplePOSFactory.deployed()
+    let spos = await factory.createPOS(
+      exchange.address,
+      "MyToken",
+      "simMTKN",
+      1,
+      100,
+      5000,
+      { value: initialEthValue }
+    )
+
+    // owner should be the creator
+    assert.equal(await contract.owner(), accounts[0])
   })
 
   /***************************************
