@@ -25,7 +25,7 @@ contract SimplePOSFactory {
         uint256 _curveCoefficient
     ) external payable {
         SimplePOS spos =
-            (new SimplePOS).value(msg.value)(
+            new SimplePOS{value: msg.value}(
                 _exchange,
                 _sposTokenName,
                 _sposTokenSymbol,
