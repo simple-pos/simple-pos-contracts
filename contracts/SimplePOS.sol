@@ -24,7 +24,7 @@ contract SimplePOS {
      * @param _initialRatio SimplePOS creator sets up the initial ratio of bonus tokens pool to the SimplePOSToken supply
      * @param _commission Commission on incoming payments that should form bonus tokens pool; [0..10000); 1 unit == 0.01%
      * @param _curveCoefficient The bonding curve coefficient; [0..10000); 1 unit == 0.01%
-     * @param sender Onwnership will be assigned to this address. Required for deployments via factory contract
+     * @param sender Ownership will be assigned to this address. Required for deployments via factory contract
      */
     constructor(
         IUniswapExchange _exchange,
