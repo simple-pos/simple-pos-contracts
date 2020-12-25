@@ -15,7 +15,7 @@ contract("SimplePOS", accounts => {
     it("should create a contract", async () => {
         let exchange = await MockUniswapExchange.new()
         let initialEthValue = toEth(0.1)
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 100, 5000, { value: initialEthValue })
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 100, 5000, accounts[0], { value: initialEthValue })
         // owner should be the creator        
         assert.equal(await contract.owner(), accounts[0])
         // check SPOS token params
@@ -50,38 +50,38 @@ contract("SimplePOS", accounts => {
 
     it("should revert constructor if commission is 100%", async () => {
         let exchange = await MockUniswapExchange.new()
-        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 10000, 5000, { value: toEth(0.1) }),
+        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 10000, 5000, accounts[0], { value: toEth(0.1) }),
                             "Commission should be less than 100%")
     })
 
     it("should revert constructor if value is not transferred", async () => {
         let exchange = await MockUniswapExchange.new()
-        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 100, 5000),
+        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 100, 5000, accounts[0]),
                             "ETH is required to form bonus tokens pool")
     })
 
     it("should revert constructor if initial ratio is zero", async () => {
         let exchange = await MockUniswapExchange.new()
-        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 0, 100, 5000, { value: toEth(0.1) }),
+        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 0, 100, 5000, accounts[0], { value: toEth(0.1) }),
                             "Initial ratio should be positive")
     })
 
     it("should revert constructor if curve coefficient is 100%", async () => {
         let exchange = await MockUniswapExchange.new()
-        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 100, 10000, { value: toEth(0.1) }),
+        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 100, 10000, accounts[0], { value: toEth(0.1) }),
                             "Curve coefficient should be less than 100%")
     })
 
     it("should revert constructor if initialMintedPOSTokens is overflowed", async () => {
         let exchange = await MockUniswapExchange.new()
         let oneWei = toEth(fromEth("1"))
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", maxUint, 100, 5000, { value: oneWei })
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", maxUint, 100, 5000, accounts[0], { value: oneWei })
         let sposToken = await SimplePOSToken.at(await contract.sposToken())
         let totalSupply = await sposToken.totalSupply()
         assert.equal(fromEth(totalSupply), fromEth(maxUint))
         // should overflow
         await exchange.setEthToTokenSwapRate(2)
-        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", maxUint, 100, 5000, { value: oneWei }),
+        await assert.revert(SimplePOS.new(exchange.address, "MyToken", "simMTKN", maxUint, 100, 5000, accounts[0], { value: oneWei }),
                             "SafeMath: multiplication overflow.")
     })
 
@@ -95,7 +95,7 @@ contract("SimplePOS", accounts => {
 
         let initialEthValue = toEth(1)
         // fee: 5%; curve_coefficient: 50%
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, accounts[0], { value: initialEthValue })
 
         // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
         // and transferred to the creator
@@ -131,7 +131,7 @@ contract("SimplePOS", accounts => {
 
         let initialEthValue = toEth(1)
         // fee: 5%; curve_coefficient: 50%
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, accounts[0], { value: initialEthValue })
         let sposToken = await SimplePOSToken.at(await contract.sposToken())
 
         await contract.sendTransaction({ from: accounts[1], value: toEth(1) })
@@ -154,7 +154,7 @@ contract("SimplePOS", accounts => {
 
         let initialEthValue = toEth(1)
         // fee: 5%; curve_coefficient: 50%
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, accounts[0],{ value: initialEthValue })
         let sposToken = await SimplePOSToken.at(await contract.sposToken())
 
         await contract.sendTransaction({from: accounts[1], value: toEth(1)})
@@ -172,7 +172,7 @@ contract("SimplePOS", accounts => {
 
         let initialEthValue = toEth(1)
         // fee: 5%; curve_coefficient: 50%
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, accounts[0], { value: initialEthValue })
         let sposToken = await SimplePOSToken.at(await contract.sposToken())
 
         await contract.sendTransaction({from: accounts[1], value: toEth(1)})
@@ -195,7 +195,7 @@ contract("SimplePOS", accounts => {
 
         let initialEthValue = toEth(1)
         // fee: 5%; curve_coefficient: 50%
-        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, { value: initialEthValue })
+        let contract = await SimplePOS.new(exchange.address, "MyToken", "simMTKN", 1, 500, 5000, accounts[0], { value: initialEthValue })
         let sposToken = await SimplePOSToken.at(await contract.sposToken())
         let subscription = await Subscription.at(await contract.subscription())
 

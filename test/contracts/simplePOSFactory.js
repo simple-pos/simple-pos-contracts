@@ -30,41 +30,21 @@ contract("SimplePOSFactory", (accounts) => {
     let spos = await SimplePOS.at(sposAddress)
 
     // owner should be the creator
-    console.log("SimplePOSFactory Address: ", factory.address)
     assert.equal(await spos.owner(), accounts[0])
-  })
 
-  /***************************************
-   ************* CONSTRUCTOR *************
-   ***************************************/
-
-  it("should create a contract", async () => {
-    let exchange = await MockUniswapExchange.new()
-    let initialEthValue = toEth(0.1)
-    let contract = await SimplePOS.new(
-      exchange.address,
-      "MyToken",
-      "simMTKN",
-      1,
-      100,
-      5000,
-      { value: initialEthValue }
-    )
-    // owner should be the creator
-    assert.equal(await contract.owner(), accounts[0])
     // check SPOS token params
-    let sposToken = await SimplePOSToken.at(await contract.sposToken())
+    let sposToken = await SimplePOSToken.at(await spos.sposToken())
     assert.equal(await sposToken.name(), "MyToken")
     assert.equal(await sposToken.symbol(), "simMTKN")
     // check commission
-    assert.equal(await contract.commission(), 100)
+    assert.equal(await spos.commission(), 100)
     // check curve coefficient
-    assert.equal(await contract.curveCoefficient(), 5000)
+    assert.equal(await spos.curveCoefficient(), 5000)
     // check exchange
-    assert.equal(await contract.exchange(), exchange.address)
+    assert.equal(await spos.exchange(), exchange.address)
     // check that bonus token is the same as exchange token
     assert.equal(
-      await contract.getBonusTokenAddress(),
+      await spos.getBonusTokenAddress(),
       await exchange.tokenAddress()
     )
     // check that SPOS token is minted in the right proportion (MockUniswapExchange._ethToTokenSwapRate == 1)
@@ -78,13 +58,13 @@ contract("SimplePOSFactory", (accounts) => {
     // (1 to 1 with sposToken.totalSupply as contract.initialRation == 1)
     let mockBonusToken = await MockStableCoin.at(await exchange.tokenAddress())
     assert.equal(
-      fromEth(await mockBonusToken.balanceOf(contract.address)),
+      fromEth(await mockBonusToken.balanceOf(spos.address)),
       fromEth(totalSupply)
     )
     // check that contract Eth balance is zero
-    assert.equal(await web3.eth.getBalance(contract.address), 0)
+    assert.equal(await web3.eth.getBalance(spos.address), 0)
     // check that the proper subscription is created
-    let subscription = await Subscription.at(await contract.subscription())
-    assert.equal(await subscription.author(), contract.address)
+    let subscription = await Subscription.at(await spos.subscription())
+    assert.equal(await subscription.author(), spos.address)
   })
 })

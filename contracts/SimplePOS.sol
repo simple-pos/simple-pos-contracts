@@ -50,7 +50,7 @@ contract SimplePOS {
         curveCoefficient = _curveCoefficient;
         uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(0, now);
         uint initialMintedPOSTokens = initialExchangeTokenValue.mul(_initialRatio);
-        sposToken.mint(msg.sender, initialMintedPOSTokens);
+        sposToken.mint(sender, initialMintedPOSTokens);
         // Deploy subscription contract (_toAddress, _tokenAddress, _tokenAmount, _periodSeconds, _gasPrice).
         // No limitation on required subscription fee and period. 
         // _gasPrice = 0 meaning we do not expect transactions relaying
