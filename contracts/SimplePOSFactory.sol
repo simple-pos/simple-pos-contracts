@@ -31,7 +31,8 @@ contract SimplePOSFactory {
                 _sposTokenSymbol,
                 _initialRatio,
                 _commission,
-                _curveCoefficient
+                _curveCoefficient,
+                msg.sender
             );
 
         emit POSCreated(spos);
