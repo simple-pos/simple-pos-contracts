@@ -24,6 +24,7 @@ contract SimplePOS {
      * @param _initialRatio SimplePOS creator sets up the initial ratio of bonus tokens pool to the SimplePOSToken supply
      * @param _commission Commission on incoming payments that should form bonus tokens pool; [0..10000); 1 unit == 0.01%
      * @param _curveCoefficient The bonding curve coefficient; [0..10000); 1 unit == 0.01%
+     * @param sender Ownership will be assigned to this address. Required for deployments via factory contract
      */
     constructor(
         IUniswapExchange _exchange,
@@ -31,7 +32,8 @@ contract SimplePOS {
         string memory _sposTokenSymbol,
         uint _initialRatio,
         uint _commission,
-        uint _curveCoefficient
+        uint _curveCoefficient,
+        address payable sender
     )
         public
         payable
@@ -40,14 +42,15 @@ contract SimplePOS {
         require(_initialRatio > 0, "Initial ratio should be positive");
         require(_commission < 10000, "Commission should be less than 100%");
         require(_curveCoefficient < 10000, "Curve coefficient should be less than 100%");
-        owner = msg.sender;
+        require(sender != address(0), "Sender address has to be defined");
+        owner = sender;
         exchange = _exchange;
         sposToken = new SimplePOSToken(_sposTokenName, _sposTokenSymbol);
         commission = _commission;
         curveCoefficient = _curveCoefficient;
         uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(0, now);
         uint initialMintedPOSTokens = initialExchangeTokenValue.mul(_initialRatio);
-        sposToken.mint(msg.sender, initialMintedPOSTokens);
+        sposToken.mint(sender, initialMintedPOSTokens);
         // Deploy subscription contract (_toAddress, _tokenAddress, _tokenAmount, _periodSeconds, _gasPrice).
         // No limitation on required subscription fee and period. 
         // _gasPrice = 0 meaning we do not expect transactions relaying
