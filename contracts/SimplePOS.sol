@@ -48,7 +48,7 @@ contract SimplePOS {
         sposToken = new SimplePOSToken(_sposTokenName, _sposTokenSymbol);
         commission = _commission;
         curveCoefficient = _curveCoefficient;
-        // For simplicity we want to have at least one exchange token
+        // For simplicity we want to have at least one smallest piece of exchange token
         uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(1, now);
         uint initialMintedPOSTokens = initialExchangeTokenValue.mul(_initialRatio);
         sposToken.mint(sender, initialMintedPOSTokens);
@@ -65,7 +65,7 @@ contract SimplePOS {
         uint bonusPart = msg.value.mul(commission).div(10000);
         owner.transfer(msg.value.sub(bonusPart));
         (uint bonusTokenBalance, uint sposTokenSupply, uint invariant) = getBalanceSupplyInvariant();
-        uint incomingBonusTokens = exchange.ethToTokenSwapInput.value(bonusPart)(0, now);
+        uint incomingBonusTokens = exchange.ethToTokenSwapInput.value(bonusPart)(1, now);
         mintSPOSTokens(incomingBonusTokens, bonusTokenBalance, sposTokenSupply, invariant, msg.sender);
     }
 
