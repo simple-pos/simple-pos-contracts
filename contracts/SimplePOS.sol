@@ -48,7 +48,8 @@ contract SimplePOS {
         sposToken = new SimplePOSToken(_sposTokenName, _sposTokenSymbol);
         commission = _commission;
         curveCoefficient = _curveCoefficient;
-        uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(0, now);
+        // For simplicity we want to have at least one exchange token
+        uint initialExchangeTokenValue = exchange.ethToTokenSwapInput.value(msg.value)(1, now);
         uint initialMintedPOSTokens = initialExchangeTokenValue.mul(_initialRatio);
         sposToken.mint(sender, initialMintedPOSTokens);
         // Deploy subscription contract (_toAddress, _tokenAddress, _tokenAmount, _periodSeconds, _gasPrice).
